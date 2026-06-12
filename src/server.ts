@@ -1,5 +1,4 @@
 import express, { type Application } from "express";
-import { connectusersDB } from "./database/user.chat.js";
 import router from "./router/route.js";
 import http from "http";
 import { initializeSocket } from "./socket/socket.io.js";
@@ -12,8 +11,6 @@ const port = 8000;
 const socketServer = http.createServer(app);
 
 initializeSocket(socketServer);
-
-await connectusersDB();
 
 await connectAuthUserDB();
 

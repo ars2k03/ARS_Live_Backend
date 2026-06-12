@@ -41,7 +41,8 @@ export const authMiddleWare = async ( req: Request,res: Response, next: NextFunc
       id : user.id,
       name : user.name,
       email : user.email,
-      picture : user.avatar_url
+      picture : user.avatar_url,
+      phoneNumber : user.phone_number
     };
 
     next();

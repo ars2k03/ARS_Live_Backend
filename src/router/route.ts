@@ -3,13 +3,18 @@ import { authMiddleWare } from "../middleware/auth.middle.js";
 import { googleLogin } from "../log/google.js";
 import { refreshAccessToken } from "../log/refreshToken.js";
 import pool from "../database/user.auth.js";
-import { userHistory } from "../models/user.model.js";
+import { sendOtp } from "../controller/otp.send.js";
+import { verifyOtp } from "../controller/otp.verify.js";
 
 const router = express.Router();
 
 router.post("/google-login", googleLogin);
 
 router.post("/refresh", refreshAccessToken);
+
+router.post("/send-otp", authMiddleWare, sendOtp);
+
+router.post("/verify-otp", authMiddleWare, verifyOtp);
 
 router.get("/profile", authMiddleWare, (req : Request, res : Response) => {
 
@@ -18,30 +23,6 @@ router.get("/profile", authMiddleWare, (req : Request, res : Response) => {
     return res.status(200).json({
       message: "Welcome to profile",
       user,
-    });
-
-  }
-);
-
-router.get( "/messages/:receiverId", authMiddleWare,
-  async (req, res) => {
-
-    const currentUser = (req as any).user;
-
-    const receiverId = req.params.receiverId;
-
-    const chat = await userHistory.findOne({
-      participants : {
-        $all : [
-          currentUser.id,
-          receiverId,
-        ]
-      }
-    });
-
-    return res.status(200).json({
-      success: true,
-      messages : chat?.messages ?? [],
     });
 
   }
