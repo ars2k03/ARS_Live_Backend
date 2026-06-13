@@ -9,6 +9,12 @@ import { openConversation } from "../controller/chat/openConversation.js";
 
 const router = express.Router();
 
+router.get('/', (req : Request, res : Response) => {
+  res.status(200).json({
+    message : "ARS Live Now"
+  })
+})
+
 router.post("/google-login", googleLogin);
 
 router.post("/refresh", refreshAccessToken);
