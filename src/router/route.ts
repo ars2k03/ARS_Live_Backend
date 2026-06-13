@@ -5,6 +5,7 @@ import { refreshAccessToken } from "../log/refreshToken.js";
 import pool from "../database/user.auth.js";
 import { sendOtp } from "../controller/otp.send.js";
 import { verifyOtp } from "../controller/otp.verify.js";
+import { openConversation } from "../controller/chat/openConversation.js";
 
 const router = express.Router();
 
@@ -27,6 +28,9 @@ router.get("/profile", authMiddleWare, (req : Request, res : Response) => {
 
   }
 );
+
+router.post( "/chat/open", authMiddleWare, openConversation);
+
 
 router.get( "/users", authMiddleWare, async (req, res) => {
 

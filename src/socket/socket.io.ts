@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
+import { Conversation } from "../model/conversation.model.js";
 
 const onlineUsers = new Map<string, string>();
 
@@ -14,74 +15,94 @@ export const initializeSocket = (server: HttpServer) => {
     console.log("User Connected:", socket.id);
 
     socket.on("register", (userId: string) => {
+
       onlineUsers.set(userId, socket.id);
+
+      socket.data.userId = userId;
+
       console.log(`User Registered: ${userId} -> ${socket.id}`);
+      
+      io.emit("online-users", Array.from(onlineUsers.keys()));
+
     });
 
-    socket.on("call-user", (data) => {
-      const receiverSocketId = onlineUsers.get(data.receiverId);
+    socket.on("send-message", async (data) => {
+      try {
+        const { conversationId, senderId, receiverId, text } = data;
 
-      if (!receiverSocketId) {
-        socket.emit("user-offline", {
-          receiverId: data.receiverId,
+        const newMessage = {
+          senderId,
+          text,
+          seen: false,
+          createdAt: new Date(),
+        };
+
+        await Conversation.findByIdAndUpdate(
+          conversationId,
+          {
+            $push: { messages: newMessage },
+            $set: { updatedAt: new Date() },
+          }
+        );
+
+        const receiverSocketId = onlineUsers.get(receiverId);
+
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("new-message", {
+            conversationId,
+            message: newMessage,
+          });
+        }
+
+        socket.emit("message-sent", {
+          conversationId,
+          message: newMessage,
         });
-        return;
-      }
-
-      io.to(receiverSocketId).emit("incoming-call", {
-        callerId: data.callerId,
-        callerName: data.callerName,
-        callerPicture: data.callerPicture,
-      });
-    });
-
-    socket.on("answer-call", (data) => {
-      const callerSocketId = onlineUsers.get(data.callerId);
-      if (!callerSocketId) return;
-
-      io.to(callerSocketId).emit("call-accepted", {
-        receiverId: data.receiverId,
-      });
-    });
-
-    // Either side (caller or receiver) can reject before the call connects.
-    // We notify both possible parties so whichever side is still waiting
-    // closes its CallScreen.
-    socket.on("reject-call", (data) => {
-      const callerSocketId = onlineUsers.get(data.callerId);
-      const receiverSocketId = onlineUsers.get(data.receiverId);
-
-      if (callerSocketId) {
-        io.to(callerSocketId).emit("call-rejected", {
-          receiverId: data.receiverId,
-        });
-      }
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("call-rejected", {
-          receiverId: data.receiverId,
-        });
+      } catch (e) {
+        console.log(e);
       }
     });
 
-    // Used to hang up an ALREADY-CONNECTED call. Notifies the other party.
-    socket.on("end-call", (data) => {
-      const otherSocketId = onlineUsers.get(data.receiverId);
-      if (!otherSocketId) return;
+    socket.on("mark-seen", async ({ conversationId, userId }) => {
+      try {
+        await Conversation.updateOne(
+          { _id: conversationId },
+          { $set: { "messages.$[msg].seen": true } },
+          {
+            arrayFilters: [
+              { "msg.senderId": { $ne: userId }, "msg.seen": false },
+            ],
+          }
+        );
 
-      io.to(otherSocketId).emit("call-ended", {
-        from: data.callerId,
-      });
+        io.emit("messages-seen", {
+          conversationId,
+          seenBy: userId,
+        });
+      } catch (e) {
+        console.log(e);
+      }
     });
 
     socket.on("disconnect", () => {
-      for (const [userId, socketId] of onlineUsers.entries()) {
-        if (socketId === socket.id) {
-          onlineUsers.delete(userId);
-          console.log(`User Removed: ${userId}`);
-          break;
-        }
+
+      const userId = socket.data.userId;
+
+      if (!userId) return;
+
+      const currentSocketId = onlineUsers.get(userId);
+
+      if (currentSocketId === socket.id) {
+
+        onlineUsers.delete(userId);
+
+        io.emit(
+          "online-users",
+          Array.from(onlineUsers.keys())
+        );
       }
-      console.log("User Disconnected:", socket.id);
+
+      console.log(`User Removed: ${userId}`);
     });
   });
 
