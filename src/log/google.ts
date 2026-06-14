@@ -17,7 +17,7 @@ type User = {
 export const googleLogin = async ( req: Request, res: Response ) => {
 
   try {
-
+    
     const { idToken } = req.body;
 
     let user : User;

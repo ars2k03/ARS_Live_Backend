@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import client from "../services/twilio.service.js";
 import dotenv from "dotenv";
 import { redis } from "../database/auth.redis.js";
 import pool from "../database/user.auth.js";
@@ -44,19 +43,22 @@ export const sendOtp = async ( req: Request,res: Response ) => {
         }
     );
 
-    const message = await client.messages.create({
-      from: "whatsapp:+14155238886",
-      contentSid: process.env.TWILIO_CONTENT_SID!,
-      contentVariables: JSON.stringify({
-        "1": otp,
-      }),
-      to: `whatsapp:${phoneNumber}`,
-    });
+    await fetch("https://whatsapp-ai-assistant-ee5w.onrender.com/send-otp",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          otp
+        }),
+      }
+    );
 
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
-      sid: message.sid,
     });
 
   } catch (error: any) {
