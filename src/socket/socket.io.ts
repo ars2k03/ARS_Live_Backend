@@ -18,12 +18,8 @@ export const initializeSocket = (server: HttpServer) => {
 
       onlineUsers.set(userId, socket.id);
 
-      socket.data.userId = userId;
-
       console.log(`User Registered: ${userId} -> ${socket.id}`);
       
-      io.emit("online-users", Array.from(onlineUsers.keys()));
-
     });
 
     socket.on("send-message", async (data) => {
@@ -95,11 +91,7 @@ export const initializeSocket = (server: HttpServer) => {
       if (currentSocketId === socket.id) {
 
         onlineUsers.delete(userId);
-
-        io.emit(
-          "online-users",
-          Array.from(onlineUsers.keys())
-        );
+        
       }
 
       console.log(`User Removed: ${userId}`);
